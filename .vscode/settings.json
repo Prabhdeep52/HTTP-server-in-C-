@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.ejs": "html",
+        "ws2tcpip.h": "c"
+    }
+}

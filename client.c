@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <winsock2.h>
-#include <time.h>  // For measuring time
+#include <time.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -14,35 +14,32 @@ int main() {
     WSADATA wsaData;
     SOCKET sock;
     struct sockaddr_in serverAddr;
- char *htmlContent = "<!DOCTYPE html>\n"
-                    "<html lang=\"en\">\n"
-                    "<head>\n"
-                    "    <meta charset=\"UTF-8\">\n"
-                    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-                    "    <title>Centered Content</title>\n"
-                    "    <style>\n"
-                    "        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }\n"
-                    "        h1 { text-align: center; }\n"
-                    "    </style>\n"
-                    "</head>\n"
-                    "<body>\n"
-                    "    <h1>TCP Data sent by client</h1>\n"
-                    "</body>\n"
-                    "</html>";
-
+    char *htmlContent = "<!DOCTYPE html>\n"
+                        "<html lang=\"en\">\n"
+                        "<head>\n"
+                        "    <meta charset=\"UTF-8\">\n"
+                        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+                        "    <title>Centered Content</title>\n"
+                        "    <style>\n"
+                        "        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }\n"
+                        "        h1 { text-align: center; }\n"
+                        "    </style>\n"
+                        "</head>\n"
+                        "<body>\n"
+                        "    <h1>TCP Data sent by client</h1>\n"
+                        "</body>\n"
+                        "</html>";
 
     char request[BUFFER_SIZE];
     int bytesSent, bytesReceived;
     char response[BUFFER_SIZE];
-    clock_t start, end;  // Variables to store start and end time
+    clock_t start, end;  
 
-    // Initialize Winsock
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         printf("Winsock initialization failed.\n");
         return 1;
     }
 
-    // Create socket
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
         printf("Socket creation failed.\n");
@@ -50,15 +47,13 @@ int main() {
         return 1;
     }
 
-    // Setup server address
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(SERVER_PORT);
     serverAddr.sin_addr.s_addr = inet_addr(SERVER_ADDR);
 
-    // Start measuring time
+    // Start time
     start = clock();
 
-    // Connect to server
     if (connect(sock, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         printf("Connection failed.\n");
         closesocket(sock);
@@ -66,7 +61,6 @@ int main() {
         return 1;
     }
 
-    // Create HTTP POST request with HTML content
     snprintf(request, sizeof(request),
              "POST / HTTP/1.1\r\n"
              "Host: %s:%d\r\n"
@@ -76,7 +70,6 @@ int main() {
              "%s",
              SERVER_ADDR, SERVER_PORT, (int)strlen(htmlContent), htmlContent);
 
-    // Send request to server
     bytesSent = send(sock, request, strlen(request), 0);
     if (bytesSent < 0) {
         printf("Failed to send request.\n");
@@ -85,28 +78,20 @@ int main() {
         return 1;
     }
 
-    printf("Request sent successfully.\n");
-
-    // Receive response from server
     bytesReceived = recv(sock, response, sizeof(response) - 1, 0);
     if (bytesReceived > 0) {
-        response[bytesReceived] = '\0';  // Null-terminate the response
+        response[bytesReceived] = '\0';
         printf("Server response:\n%s\n", response);
     } else {
         printf("Failed to receive response.\n");
     }
 
-    // End measuring time
     end = clock();
 
-    // Calculate the time taken in seconds
-    double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Time taken for the request and response: %f seconds\n", time_taken);
-
-    // Cleanup
+double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+printf("TCP Round-trip time: %.6f seconds (%.2f ms)\n", time_taken, time_taken * 1000);
+printf("TCP Throughput: %.2f bytes/sec\n", bytesSent / time_taken);
     closesocket(sock);
     WSACleanup();
     return 0;
 }
-
-

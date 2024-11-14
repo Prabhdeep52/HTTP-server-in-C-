@@ -9,7 +9,7 @@
 #define SERVER_PORT 3000
 #define SERVER_ADDR "127.0.0.1"
 #define BUFFER_SIZE 4096
-#define NUM_PACKETS 10  // Number of packets to send
+#define NUM_PACKETS 10
 
 int main() {
     WSADATA wsaData;
@@ -32,6 +32,7 @@ int main() {
     char response[BUFFER_SIZE];
     int serverAddrLen = sizeof(serverAddr);
     int totalPacketsSent = 0, totalPacketsReceived = 0;
+    double totalRoundTripTime = 0.0;
 
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         printf("Winsock initialization failed.\n");
@@ -49,10 +50,8 @@ int main() {
     serverAddr.sin_port = htons(SERVER_PORT);
     serverAddr.sin_addr.s_addr = inet_addr(SERVER_ADDR);
 
-    // Record the start time of the entire transaction
     clock_t totalStart = clock();
 
-    // Send multiple packets
     for (int i = 0; i < NUM_PACKETS; i++) {
         snprintf(request, sizeof(request),
                  "POST / HTTP/1.1\r\n"
@@ -73,25 +72,35 @@ int main() {
         }
 
         bytesReceived = recvfrom(sock, response, sizeof(response) - 1, 0, NULL, NULL);
+        clock_t end = clock();
+
+        double roundTripTime = ((double)(end - start)) / CLOCKS_PER_SEC;
+
         if (bytesReceived > 0) {
             response[bytesReceived] = '\0';
             totalPacketsReceived++;
+            printf("UDP Round-trip time for packet %d: %.6f seconds\n", i + 1, roundTripTime);
+            totalRoundTripTime += roundTripTime;
+        } else {
+            printf("Packet %d lost.\n", i + 1);
         }
-        clock_t end = clock();
-
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        printf("Round-trip time for packet %d: %.6f seconds\n", i + 1, time_taken);
 
         totalPacketsSent++;
     }
 
-    // Record the total end time
-    clock_t totalEnd = clock();
-    double totalTime = ((double)(totalEnd - totalStart)) / CLOCKS_PER_SEC;
-    double packetLoss = (1 - ((double)totalPacketsReceived / totalPacketsSent)) * 100;
 
-    // printf("Packet loss: %.2f%%\n", packetLoss);
-    printf("Total time taken for sending and receiving %d packets: %.6f seconds\n", NUM_PACKETS, totalTime);
+clock_t totalEnd = clock();
+double totalTime = ((double)(totalEnd - totalStart)) / CLOCKS_PER_SEC;
+double packetLoss = (1 - ((double)totalPacketsReceived / totalPacketsSent)) * 100;
+
+printf("\n--- UDP Statistics ---\n");
+printf("Total packets sent: %d\n", totalPacketsSent);
+printf("Total packets received: %d\n", totalPacketsReceived);
+printf("Packet loss: %.2f%%\n", packetLoss);
+printf("Average round-trip time: %.6f seconds (%.2f ms)\n", totalRoundTripTime / totalPacketsReceived, 
+       (totalRoundTripTime / totalPacketsReceived) * 1000);
+printf("Total time taken for all packets: %.6f seconds (%.2f ms)\n", totalTime, totalTime * 1000);
+
 
     closesocket(sock);
     WSACleanup();
